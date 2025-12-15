@@ -1,22 +1,29 @@
-// File: timeline.js (Version 3.0 - Elegant Return)
+// File: timeline.js (v4.0 - Bulletproof Search & Clean Design)
 (function() {
     var BIB_URL = 'https://raw.githubusercontent.com/grazianoEnzoMarchesani/publications/refs/heads/main/references.bib';
     var CONTAINER_ID = 'timeline-root';
-    var SEARCH_ID = 'searchInput';
     
-    // Mappa semplice per i nomi leggibili
+    // Mappa dei tipi per etichette pulite
     var TYPE_MAP = {
-        'article': 'Journal', 'inbook': 'Book Chapter', 'conference': 'Conference',
-        'phdthesis': 'PhD Thesis', 'misc': 'Project / Misc', 'techreport': 'Report', 'book': 'Book'
+        'article': 'Journal', 
+        'inbook': 'Book Chapter', 
+        'conference': 'Conference',
+        'phdthesis': 'PhD Thesis', 
+        'misc': 'Project', 
+        'techreport': 'Report', 
+        'book': 'Book'
     };
 
+    // Variabile globale per contenere i dati
     var allEntries = []; 
 
+    // Funzione pulizia stringhe
     function clean(str) {
         if(!str) return '';
         return str.replace(/[\n\r]+/g,' ').replace(/[{}]/g,'').replace(/\\&/g,'&').replace(/\s+/g,' ').trim();
     }
 
+    // Parser BibTeX Semplificato
     function parseSimple(text) {
         var entries = [];
         var blocks = text.split('@');
@@ -38,15 +45,22 @@
                 var val = match[2] || match[3] || match[4];
                 fields[key] = clean(val);
             }
+            
+            // Dati essenziali
             fields.year = fields.year ? parseInt(fields.year) : 0;
             fields.type = type;
-            // Stringa per la ricerca
-            fields.searchString = (fields.title + " " + fields.author + " " + fields.year + " " + fields.booktitle + " " + fields.journal).toLowerCase();
+            
+            // Creiamo una stringa unica per la ricerca (titolo + autori + anno + editore)
+            // Usiamo || '' per evitare crash su campi vuoti
+            var searchBase = (fields.title || '') + " " + (fields.author || '') + " " + (fields.year || '') + " " + (fields.journal || '') + " " + (fields.booktitle || '');
+            fields.searchString = searchBase.toLowerCase();
+            
             entries.push(fields);
         }
         return entries;
     }
 
+    // Funzione che disegna la timeline
     function renderTimeline(data) {
         var container = document.getElementById(CONTAINER_ID);
         if(!container) return;
@@ -58,18 +72,18 @@
         }
 
         data.forEach(function(item, idx) {
-            // Logica per alternare destra/sinistra
+            // Alternanza destra/sinistra
             var side = (idx % 2 === 0) ? 'timeline-block-right' : 'timeline-block-left';
             
+            // Formattazione Tipo e Luogo
             var niceType = TYPE_MAP[item.type] || 'Publication';
-            
-            // Costruzione contesto (Journal o Conference o Booktitle)
             var venue = item.journal || item.booktitle || item.publisher || '';
-            var contextString = item.year + ' | ' + niceType + (venue ? ': ' + venue : '');
+            var contextString = (item.year || 'n.d.') + ' | ' + niceType + (venue ? ': ' + venue : '');
 
+            // Formattazione Autori
             var authors = (item.author || '').replace(/ and /gi, ', ');
             
-            // Link
+            // Link (DOI o URL)
             var linkHtml = '';
             if (item.doi) {
                 var cleanDoi = item.doi.replace('https://doi.org/','');
@@ -78,7 +92,7 @@
                 linkHtml = '<br><a href="'+item.url+'" target="_blank">View Link</a>';
             }
 
-            // HTML PULITO (Simile alla tua versione originale statica)
+            // HTML PULITO (Gerarchia: H3 > SPAN > P)
             var html = 
             '<div class="timeline-block '+side+'">' +
                 '<div class="timeline-marker"></div>' +
@@ -93,31 +107,36 @@
         });
     }
 
-    function initSearch() {
-        var input = document.getElementById(SEARCH_ID);
-        if(!input) return;
-        
-        input.addEventListener('input', function(e) {
-            var term = e.target.value.toLowerCase();
-            var filtered = allEntries.filter(function(entry) {
-                return entry.searchString.includes(term);
-            });
-            renderTimeline(filtered);
-        });
-    }
-
-    // Esecuzione
+    // Caricamento Dati
     fetch(BIB_URL)
     .then(function(res) { return res.text(); })
     .then(function(text) {
         allEntries = parseSimple(text);
-        allEntries.sort(function(a, b) { return b.year - a.year; }); // Ordine cronologico inverso
+        // Ordine cronologico inverso (dal più recente)
+        allEntries.sort(function(a, b) { return b.year - a.year; }); 
+        
+        // Disegna tutto all'inizio
         renderTimeline(allEntries);
-        initSearch();
     })
     .catch(function(err) {
         var c = document.getElementById(CONTAINER_ID);
-        if(c) c.innerHTML = 'Error loading data: ' + err.message;
+        if(c) c.innerHTML = 'Errore caricamento: ' + err.message;
+    });
+
+    // GESTIONE RICERCA (Event Delegation - Metodo infallibile)
+    // Ascoltiamo l'intera pagina. Se l'evento viene da "searchInput", filtriamo.
+    document.addEventListener('input', function(e) {
+        if (e.target && e.target.id === 'searchInput') {
+            var term = e.target.value.toLowerCase();
+            
+            // Filtriamo
+            var filtered = allEntries.filter(function(entry) {
+                return entry.searchString.indexOf(term) !== -1;
+            });
+            
+            // Ridisegniamo
+            renderTimeline(filtered);
+        }
     });
 
 })();
