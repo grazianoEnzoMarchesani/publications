@@ -1,22 +1,12 @@
-// File: timeline.js v2.0 - With Search, Icons and Badges
+// File: timeline.js
 (function() {
     var BIB_URL = 'https://raw.githubusercontent.com/grazianoEnzoMarchesani/publications/refs/heads/main/references.bib';
     var CONTAINER_ID = 'timeline-root';
-    var SEARCH_ID = 'searchInput';
     
-    // Configurazione Badge e Icone per tipo
-    var TYPE_CONFIG = {
-        'article':      { label: 'Journal',      color: '#3498db', icon: 'fa-book-open' }, // Blu
-        'inbook':       { label: 'Book Chapter', color: '#9b59b6', icon: 'fa-bookmark' },  // Viola
-        'conference':   { label: 'Conference',   color: '#e67e22', icon: 'fa-users' },     // Arancio
-        'phdthesis':    { label: 'PhD Thesis',   color: '#2c3e50', icon: 'fa-graduation-cap' }, // Scuro
-        'misc':         { label: 'Project',      color: '#16a085', icon: 'fa-project-diagram' }, // Verde acqua
-        'techreport':   { label: 'Report',       color: '#7f8c8d', icon: 'fa-file-alt' },
-        'book':         { label: 'Book',         color: '#8e44ad', icon: 'fa-book' },
-        'default':      { label: 'Publication',  color: '#95a5a6', icon: 'fa-file' }
+    var TYPE_MAP = {
+        'article':'Journal', 'inbook':'Book Chapter', 'conference':'Conference',
+        'phdthesis':'PhD Thesis', 'misc':'Project / Misc', 'techreport':'Report', 'book': 'Book'
     };
-
-    var allEntries = []; // Store globale per la ricerca
 
     function clean(str) {
         if(!str) return '';
@@ -37,6 +27,7 @@
             if (lastBrace !== -1) content = content.substring(0, lastBrace);
 
             var fields = {};
+            // Regex robusta per campi multi-linea
             var regex = /([a-zA-Z0-9_]+)\s*=\s*(?:\{([^}]*)\}|"([^"]*)"|(\d+))/g;
             var match;
             while ((match = regex.exec(content)) !== null) {
@@ -46,8 +37,6 @@
             }
             fields.year = fields.year ? parseInt(fields.year) : 0;
             fields.type = type;
-            // Campo combinato per la ricerca
-            fields.searchString = (fields.title + " " + fields.author + " " + fields.year + " " + fields.booktitle + " " + fields.journal).toLowerCase();
             entries.push(fields);
         }
         return entries;
@@ -59,75 +48,49 @@
         container.innerHTML = ''; 
 
         if(data.length === 0) {
-            container.innerHTML = '<div style="text-align:center;padding:40px;color:#777;">Nessun risultato trovato.</div>';
+            container.innerHTML = '<div style="text-align:center;padding:20px;">Nessuna pubblicazione trovata.</div>';
             return;
         }
 
         data.forEach(function(item, idx) {
             var side = (idx % 2 === 0) ? 'timeline-block-right' : 'timeline-block-left';
-            
-            // Configurazione Tipo
-            var config = TYPE_CONFIG[item.type] || TYPE_CONFIG['default'];
+            var niceType = TYPE_MAP[item.type] || 'Publication';
             var venue = item.journal || item.booktitle || item.publisher || '';
             var authors = (item.author || '').replace(/ and /gi, ', ');
             
-            // Link Logic
             var linkHtml = '';
             if (item.doi) {
                 var cleanDoi = item.doi.replace('https://doi.org/','');
-                linkHtml = '<a href="https://doi.org/'+cleanDoi+'" target="_blank" class="btn-link"><i class="fas fa-external-link-alt"></i> DOI</a>';
+                linkHtml = '<br><a href="https://doi.org/'+cleanDoi+'" target="_blank">DOI: '+cleanDoi+'</a>';
+            } else if (item.url) {
+                linkHtml = '<br><a href="'+item.url+'" target="_blank">View Link</a>';
             }
-            if (item.url) {
-                linkHtml += ' <a href="'+item.url+'" target="_blank" class="btn-link"><i class="fas fa-link"></i> Link</a>';
-            }
-            if(linkHtml) linkHtml = '<div class="links-area">' + linkHtml + '</div>';
 
-            // HTML Card
             var html = 
             '<div class="timeline-block '+side+'">' +
-                '<div class="timeline-marker" style="background:'+config.color+'"></div>' +
-                '<div class="timeline-content" style="border-left-color:'+config.color+'">' +
-                    '<div class="timeline-meta">' +
-                        '<span class="badge" style="background:'+config.color+'"><i class="fas '+config.icon+'"></i> '+config.label+'</span>' +
-                        '<span class="badge year-badge">'+(item.year || 'n.d.')+'</span>' +
-                    '</div>' +
+                '<div class="timeline-marker"></div>' +
+                '<div class="timeline-content">' +
                     '<h3>' + (item.title || 'Untitled') + '</h3>' +
-                    (venue ? '<div style="font-size:13px; color:#555; margin-bottom:8px;"><strong>In:</strong> ' + venue + '</div>' : '') +
-                    '<p class="author-text">' + authors + '</p>' +
-                    linkHtml +
+                    '<span>' + (item.year || '') + ' | ' + niceType + (venue ? ': '+venue : '') + '</span>' +
+                    '<p>Authors: ' + authors + linkHtml + '</p>' +
                 '</div>' +
             '</div>';
-            
             container.insertAdjacentHTML('beforeend', html);
         });
     }
 
-    function initSearch() {
-        var input = document.getElementById(SEARCH_ID);
-        if(!input) return;
-        
-        input.addEventListener('input', function(e) {
-            var term = e.target.value.toLowerCase();
-            var filtered = allEntries.filter(function(entry) {
-                return entry.searchString.includes(term);
-            });
-            renderTimeline(filtered);
-        });
-    }
+    // Esecuzione
+    var container = document.getElementById(CONTAINER_ID);
+    if(container) container.innerHTML = '<div id="loading-msg" style="text-align:center;padding:20px;">Caricamento...</div>';
 
-    // MAIN EXECUTION
     fetch(BIB_URL)
     .then(function(res) { return res.text(); })
     .then(function(text) {
-        allEntries = parseSimple(text);
-        allEntries.sort(function(a, b) { return b.year - a.year; });
-        
-        renderTimeline(allEntries);
-        initSearch();
+        var data = parseSimple(text);
+        data.sort(function(a, b) { return b.year - a.year; });
+        renderTimeline(data);
     })
     .catch(function(err) {
-        var container = document.getElementById(CONTAINER_ID);
-        if(container) container.innerHTML = '<div style="color:red;text-align:center;">Errore caricamento: ' + err.message + '</div>';
+        if(container) container.innerHTML = '<div style="color:red;text-align:center;">Errore: ' + err.message + '</div>';
     });
-
 })();
