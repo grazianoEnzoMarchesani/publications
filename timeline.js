@@ -1,11 +1,8 @@
+// File: timeline.js
 (function() {
     var BIB_URL = 'https://raw.githubusercontent.com/grazianoEnzoMarchesani/publications/refs/heads/main/references.bib';
     var CONTAINER_ID = 'timeline-root';
-    var SEARCH_ID = 'timeline-search';
     
-    // Variabile per salvare tutti i dati
-    var allPublications = [];
-
     var TYPE_MAP = {
         'article':'Journal', 'inbook':'Book Chapter', 'conference':'Conference',
         'phdthesis':'PhD Thesis', 'misc':'Project / Misc', 'techreport':'Report', 'book': 'Book'
@@ -30,6 +27,7 @@
             if (lastBrace !== -1) content = content.substring(0, lastBrace);
 
             var fields = {};
+            // Regex robusta per campi multi-linea
             var regex = /([a-zA-Z0-9_]+)\s*=\s*(?:\{([^}]*)\}|"([^"]*)"|(\d+))/g;
             var match;
             while ((match = regex.exec(content)) !== null) {
@@ -39,9 +37,6 @@
             }
             fields.year = fields.year ? parseInt(fields.year) : 0;
             fields.type = type;
-            // Creiamo un campo "searchable" per facilitare la ricerca
-            fields.searchStr = (fields.title + ' ' + fields.author + ' ' + fields.year + ' ' + (fields.journal||'') + ' ' + (fields.booktitle||'')).toLowerCase();
-            
             entries.push(fields);
         }
         return entries;
@@ -53,7 +48,7 @@
         container.innerHTML = ''; 
 
         if(data.length === 0) {
-            container.innerHTML = '<div style="text-align:center;padding:20px;color:#777;">Nessun risultato trovato.</div>';
+            container.innerHTML = '<div style="text-align:center;padding:20px;">Nessuna pubblicazione trovata.</div>';
             return;
         }
 
@@ -84,39 +79,16 @@
         });
     }
 
-    // Funzione di filtro
-    function setupSearch() {
-        var searchInput = document.getElementById(SEARCH_ID);
-        if(!searchInput) return;
-
-        searchInput.addEventListener('keyup', function(e) {
-            var term = e.target.value.toLowerCase();
-            
-            // Filtra l'array globale
-            var filtered = allPublications.filter(function(item) {
-                return item.searchStr.indexOf(term) > -1;
-            });
-
-            renderTimeline(filtered);
-        });
-    }
-
-    // Avvio
+    // Esecuzione
     var container = document.getElementById(CONTAINER_ID);
-    if(container) container.innerHTML = '<div style="text-align:center;padding:20px;color:#777;">Caricamento...</div>';
+    if(container) container.innerHTML = '<div id="loading-msg" style="text-align:center;padding:20px;">Caricamento...</div>';
 
     fetch(BIB_URL)
     .then(function(res) { return res.text(); })
     .then(function(text) {
-        allPublications = parseSimple(text);
-        // Ordina per anno
-        allPublications.sort(function(a, b) { return b.year - a.year; });
-        
-        // Renderizza tutto inizialmente
-        renderTimeline(allPublications);
-        
-        // Attiva la ricerca
-        setupSearch();
+        var data = parseSimple(text);
+        data.sort(function(a, b) { return b.year - a.year; });
+        renderTimeline(data);
     })
     .catch(function(err) {
         if(container) container.innerHTML = '<div style="color:red;text-align:center;">Errore: ' + err.message + '</div>';
