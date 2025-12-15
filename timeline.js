@@ -1,12 +1,16 @@
-// File: timeline.js
+// File: timeline.js (Version 3.0 - Elegant Return)
 (function() {
     var BIB_URL = 'https://raw.githubusercontent.com/grazianoEnzoMarchesani/publications/refs/heads/main/references.bib';
     var CONTAINER_ID = 'timeline-root';
+    var SEARCH_ID = 'searchInput';
     
+    // Mappa semplice per i nomi leggibili
     var TYPE_MAP = {
-        'article':'Journal', 'inbook':'Book Chapter', 'conference':'Conference',
-        'phdthesis':'PhD Thesis', 'misc':'Project / Misc', 'techreport':'Report', 'book': 'Book'
+        'article': 'Journal', 'inbook': 'Book Chapter', 'conference': 'Conference',
+        'phdthesis': 'PhD Thesis', 'misc': 'Project / Misc', 'techreport': 'Report', 'book': 'Book'
     };
+
+    var allEntries = []; 
 
     function clean(str) {
         if(!str) return '';
@@ -27,7 +31,6 @@
             if (lastBrace !== -1) content = content.substring(0, lastBrace);
 
             var fields = {};
-            // Regex robusta per campi multi-linea
             var regex = /([a-zA-Z0-9_]+)\s*=\s*(?:\{([^}]*)\}|"([^"]*)"|(\d+))/g;
             var match;
             while ((match = regex.exec(content)) !== null) {
@@ -37,6 +40,8 @@
             }
             fields.year = fields.year ? parseInt(fields.year) : 0;
             fields.type = type;
+            // Stringa per la ricerca
+            fields.searchString = (fields.title + " " + fields.author + " " + fields.year + " " + fields.booktitle + " " + fields.journal).toLowerCase();
             entries.push(fields);
         }
         return entries;
@@ -48,16 +53,23 @@
         container.innerHTML = ''; 
 
         if(data.length === 0) {
-            container.innerHTML = '<div style="text-align:center;padding:20px;">Nessuna pubblicazione trovata.</div>';
+            container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;font-style:italic;">Nessun risultato trovato.</div>';
             return;
         }
 
         data.forEach(function(item, idx) {
+            // Logica per alternare destra/sinistra
             var side = (idx % 2 === 0) ? 'timeline-block-right' : 'timeline-block-left';
+            
             var niceType = TYPE_MAP[item.type] || 'Publication';
+            
+            // Costruzione contesto (Journal o Conference o Booktitle)
             var venue = item.journal || item.booktitle || item.publisher || '';
+            var contextString = item.year + ' | ' + niceType + (venue ? ': ' + venue : '');
+
             var authors = (item.author || '').replace(/ and /gi, ', ');
             
+            // Link
             var linkHtml = '';
             if (item.doi) {
                 var cleanDoi = item.doi.replace('https://doi.org/','');
@@ -66,31 +78,46 @@
                 linkHtml = '<br><a href="'+item.url+'" target="_blank">View Link</a>';
             }
 
+            // HTML PULITO (Simile alla tua versione originale statica)
             var html = 
             '<div class="timeline-block '+side+'">' +
                 '<div class="timeline-marker"></div>' +
                 '<div class="timeline-content">' +
                     '<h3>' + (item.title || 'Untitled') + '</h3>' +
-                    '<span>' + (item.year || '') + ' | ' + niceType + (venue ? ': '+venue : '') + '</span>' +
+                    '<span>' + contextString + '</span>' +
                     '<p>Authors: ' + authors + linkHtml + '</p>' +
                 '</div>' +
             '</div>';
+            
             container.insertAdjacentHTML('beforeend', html);
         });
     }
 
-    // Esecuzione
-    var container = document.getElementById(CONTAINER_ID);
-    if(container) container.innerHTML = '<div id="loading-msg" style="text-align:center;padding:20px;">Caricamento...</div>';
+    function initSearch() {
+        var input = document.getElementById(SEARCH_ID);
+        if(!input) return;
+        
+        input.addEventListener('input', function(e) {
+            var term = e.target.value.toLowerCase();
+            var filtered = allEntries.filter(function(entry) {
+                return entry.searchString.includes(term);
+            });
+            renderTimeline(filtered);
+        });
+    }
 
+    // Esecuzione
     fetch(BIB_URL)
     .then(function(res) { return res.text(); })
     .then(function(text) {
-        var data = parseSimple(text);
-        data.sort(function(a, b) { return b.year - a.year; });
-        renderTimeline(data);
+        allEntries = parseSimple(text);
+        allEntries.sort(function(a, b) { return b.year - a.year; }); // Ordine cronologico inverso
+        renderTimeline(allEntries);
+        initSearch();
     })
     .catch(function(err) {
-        if(container) container.innerHTML = '<div style="color:red;text-align:center;">Errore: ' + err.message + '</div>';
+        var c = document.getElementById(CONTAINER_ID);
+        if(c) c.innerHTML = 'Error loading data: ' + err.message;
     });
+
 })();
