@@ -1,32 +1,48 @@
-// File: timeline.js - Versione "Elegant Interactive"
+// File: timeline.js - v3.0 FIX LAYOUT & FILTERS
 (function() {
+    // 1. Rendiamo la funzione di filtro GLOBALE accessibile all'HTML
+    window.filterPublications = function(filterType, btnElement) {
+        // Gestione classe active sui bottoni
+        var buttons = document.querySelectorAll('.filter-btn');
+        buttons.forEach(function(btn) { btn.classList.remove('active'); });
+        if(btnElement) btnElement.classList.add('active');
+
+        // Mostra/Nascondi blocchi
+        var blocks = document.querySelectorAll('.timeline-block');
+        blocks.forEach(function(block) {
+            var itemType = block.getAttribute('data-type');
+            if (filterType === 'all' || itemType === filterType) {
+                block.style.display = 'block';
+                // Piccola animazione
+                setTimeout(function(){ block.style.opacity = '1'; }, 50);
+            } else {
+                block.style.display = 'none';
+                block.style.opacity = '0';
+            }
+        });
+    };
+
+    // CONFIGURAZIONE
     var BIB_URL = 'https://raw.githubusercontent.com/grazianoEnzoMarchesani/publications/refs/heads/main/references.bib';
     var CONTAINER_ID = 'timeline-root';
     
-    // MAPPATURA TIPI
     var TYPE_MAP = {
-        'article': 'Journal', 
-        'inbook': 'Book Chapter', 
-        'conference': 'Conference',
-        'phdthesis': 'PhD Thesis', 
-        'misc': 'Software / Misc', 
-        'techreport': 'Report', 
-        'book': 'Book'
+        'article': 'Journal', 'inbook': 'Book Chapter', 'conference': 'Conference',
+        'phdthesis': 'PhD Thesis', 'misc': 'Software / Misc', 'techreport': 'Report', 'book': 'Book'
     };
 
-    // PALETTE COLORI (Campionata dal tuo Network Graph)
+    // COLORI COORDINATI AL SITO E AL GRAFO
     var COLOR_MAP = {
-        'article':     '#4e76a6', // Blu Avio (il tuo colore base)
-        'conference':  '#D66060', // Rosa Antico/Rosso (nodo Thermo-Fluid)
-        'inbook':      '#9B7098', // Malva/Viola (nodo Generative Alg.)
-        'book':        '#9B7098', // Idem
-        'phdthesis':   '#8D6E63', // Marrone Terra
-        'misc':        '#E69F5C', // Arancio Pastello (nodo Arch. Innovation)
-        'techreport':  '#78909C'  // Grigio Bluastro
+        'article':     '#4e76a6', // Blu Avio (Journal)
+        'conference':  '#E67E22', // Arancio Vivo (Conference)
+        'inbook':      '#8E44AD', // Viola (Book)
+        'book':        '#8E44AD',
+        'phdthesis':   '#C0392B', // Rosso Scuro
+        'misc':        '#27AE60', // Verde (Software/Misc)
+        'techreport':  '#7F8C8D'
     };
     var DEFAULT_COLOR = '#4e76a6';
 
-    // FUNZIONI DI PARSING (Invariate)
     function clean(str) {
         if(!str) return '';
         return str.replace(/[\n\r]+/g,' ').replace(/[{}]/g,'').replace(/\\&/g,'&').replace(/\s+/g,' ').trim();
@@ -60,58 +76,33 @@
         return entries;
     }
 
-    // FUNZIONE FILTRO INTERATTIVO
-    window.filterPublications = function(filterType, btnElement) {
-        // 1. Gestione classe active sui bottoni
-        var buttons = document.querySelectorAll('.filter-btn');
-        buttons.forEach(function(btn) { btn.classList.remove('active'); });
-        if(btnElement) btnElement.classList.add('active');
-
-        // 2. Mostra/Nascondi blocchi
-        var blocks = document.querySelectorAll('.timeline-block');
-        blocks.forEach(function(block) {
-            var itemType = block.getAttribute('data-type');
-            if (filterType === 'all' || itemType === filterType) {
-                block.style.display = 'block';
-                // Piccola animazione di fade-in
-                block.style.opacity = '0';
-                setTimeout(function(){ block.style.opacity = '1'; }, 50);
-            } else {
-                block.style.display = 'none';
-            }
-        });
-    }
-
     function renderTimeline(data) {
         var root = document.getElementById(CONTAINER_ID);
         if(!root) return;
         root.innerHTML = ''; 
 
-        // 1. CREAZIONE AREA FILTRI (Fuori dalla timeline vera e propria per evitare intersezioni)
+        // 1. AREA FILTRI (Bottoni reali, non solo pallini)
         var filterHtml = '<div class="timeline-filters">';
-        // Tasto "ALL"
-        filterHtml += '<button class="filter-btn active" onclick="filterPublications(\'all\', this)">All</button>';
+        filterHtml += '<button class="filter-btn active" onclick="window.filterPublications(\'all\', this)">All</button>';
         
-        // Tasti dinamici in base ai tipi presenti
         var usedTypes = [];
         data.forEach(function(item){ if(usedTypes.indexOf(item.type) === -1) usedTypes.push(item.type); });
-        
-        // Ordine custom dei bottoni se vuoi, o l'ordine di apparizione
         var sortOrder = ['article', 'conference', 'inbook', 'misc', 'phdthesis'];
         usedTypes.sort(function(a,b){ return sortOrder.indexOf(a) - sortOrder.indexOf(b); });
 
         usedTypes.forEach(function(type) {
             var color = COLOR_MAP[type] || DEFAULT_COLOR;
             var label = TYPE_MAP[type] || type;
-            filterHtml += '<button class="filter-btn" style="border-color:'+color+'; color:'+color+'" ' + 
-                          'onmouseover="this.style.background=\''+color+'\'; this.style.color=\'#fff\'" ' +
-                          'onmouseout="if(!this.classList.contains(\'active\')){this.style.background=\'transparent\'; this.style.color=\''+color+'\'} else {this.style.color=\'#fff\'}" '+
-                          'onclick="filterPublications(\''+type+'\', this)">' + label + '</button>';
+            // Creo un bottone con bordo colorato e pallino interno
+            filterHtml += '<button class="filter-btn" style="border-color:'+color+'; color:#555;" ' + 
+                          'onclick="window.filterPublications(\''+type+'\', this)">' +
+                          '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+color+';margin-right:6px;"></span>' + 
+                          label + '</button>';
         });
         filterHtml += '</div>';
 
-        // 2. CREAZIONE CONTENITORE TIMELINE (dove ci sarà la riga verticale)
-        var entriesHtml = '<div class="timeline-entries-wrapper">';
+        // 2. TIMELINE TRACK (Il contenitore della linea verticale)
+        var entriesHtml = '<div class="timeline-track">';
         
         if(data.length === 0) {
             entriesHtml += '<div style="text-align:center;padding:20px;">Nessuna pubblicazione trovata.</div>';
@@ -131,35 +122,28 @@
                     linkHtml = '<br><a href="'+item.url+'" target="_blank" style="color:'+markerColor+'">View Link</a>';
                 }
 
-                // Aggiungo data-type per il filtro
                 entriesHtml += 
                 '<div class="timeline-block '+side+'" data-type="'+item.type+'">' +
-                    '<div class="timeline-marker" style="background: '+markerColor+'; box-shadow: 0 0 0 3px #fff, 0 0 0 5px '+markerColor+'; border:none;"></div>' + // Marker più raffinato
+                    // Marker con doppio bordo per eleganza
+                    '<div class="timeline-marker" style="background: '+markerColor+'; box-shadow: 0 0 0 4px #fff, 0 0 0 6px '+markerColor+';"></div>' +
                     '<div class="timeline-content">' +
                         '<h3>' + (item.title || 'Untitled') + '</h3>' +
                         '<span style="color:'+markerColor+'">' + (item.year || '') + ' | ' + niceType + '</span>' +
-                        '<span style="color:#999; font-weight:normal; font-style:italic;">' + (venue ? venue : '') + '</span>' +
+                        '<span style="color:#777; font-weight:normal; font-style:italic;">' + (venue ? venue : '') + '</span>' +
                         '<p>Authors: ' + authors + linkHtml + '</p>' +
                     '</div>' +
                 '</div>';
             });
         }
-        entriesHtml += '</div>'; // chiusura wrapper
+        // IMPORTANTE: Clearfix per evitare che il footer risalga
+        entriesHtml += '<div style="clear:both;"></div>';
+        entriesHtml += '</div>'; // Chiude timeline-track
 
         root.innerHTML = filterHtml + entriesHtml;
-        
-        // Fix CSS dinamico per gestire hover attivi sui bottoni generati
-        var styleEl = document.createElement('style');
-        styleEl.innerHTML = '.filter-btn.active { background-color: #555 !important; color: #fff !important; border-color: #555 !important; }'; 
-        // Per i bottoni colorati, la gestione active specifica viene fatta sovrascrivendo l'inline style nel click, 
-        // ma per pulizia usiamo un piccolo helper JS nel click handler o lasciamo il CSS gestire "All".
-        // Per semplicità qui sopra ho usato inline events, ma aggiungo una regola CSS per il pulsante "All".
-        document.head.appendChild(styleEl);
     }
 
-    // Esecuzione
     var container = document.getElementById(CONTAINER_ID);
-    if(container) container.innerHTML = '<div id="loading-msg" style="text-align:center;padding:20px;color:#999;">Loading publications...</div>';
+    if(container) container.innerHTML = '<div style="text-align:center;padding:40px;color:#999;">Loading...</div>';
 
     fetch(BIB_URL)
     .then(function(res) { return res.text(); })
