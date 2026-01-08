@@ -1,12 +1,30 @@
-// File: timeline.js
+// File: timeline.js AGGIORNATO
 (function() {
     var BIB_URL = 'https://raw.githubusercontent.com/grazianoEnzoMarchesani/publications/refs/heads/main/references.bib';
     var CONTAINER_ID = 'timeline-root';
     
     var TYPE_MAP = {
-        'article':'Journal', 'inbook':'Book Chapter', 'conference':'Conference',
-        'phdthesis':'PhD Thesis', 'misc':'Project / Misc', 'techreport':'Report', 'book': 'Book'
+        'article':'Journal', 
+        'inbook':'Book Chapter', 
+        'conference':'Conference',
+        'phdthesis':'PhD Thesis', 
+        'misc':'Project / Software', // Ho specificato Software visto i tuoi lavori
+        'techreport':'Report', 
+        'book': 'Book'
     };
+
+    // NUOVO: Mappa dei colori per tipo
+    var COLOR_MAP = {
+        'article':     '#4e76a6', // Blu (Il tuo colore attuale) - Articoli
+        'conference':  '#e67e22', // Arancione - Conferenze
+        'inbook':      '#8e44ad', // Viola - Capitoli libro
+        'book':        '#8e44ad', // Viola - Libri
+        'phdthesis':   '#c0392b', // Rosso scuro - Tesi
+        'misc':        '#27ae60', // Verde Smeraldo - Software/Progetti (es. EnviReader, CityRhythm)
+        'techreport':  '#7f8c8d'  // Grigio - Report tecnici
+    };
+    // Fallback color se il tipo non è in lista
+    var DEFAULT_COLOR = '#4e76a6';
 
     function clean(str) {
         if(!str) return '';
@@ -27,7 +45,6 @@
             if (lastBrace !== -1) content = content.substring(0, lastBrace);
 
             var fields = {};
-            // Regex robusta per campi multi-linea
             var regex = /([a-zA-Z0-9_]+)\s*=\s*(?:\{([^}]*)\}|"([^"]*)"|(\d+))/g;
             var match;
             while ((match = regex.exec(content)) !== null) {
@@ -52,12 +69,25 @@
             return;
         }
 
+        // Aggiungo una legenda opzionale in alto (puoi rimuovere questo blocco se non ti piace)
+        var legendHtml = '<div style="text-align:center; margin-bottom:30px; font-size:12px; color:#666;">' +
+            '<span style="margin:0 10px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#4e76a6;margin-right:5px;"></span>Journal</span>' +
+            '<span style="margin:0 10px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#e67e22;margin-right:5px;"></span>Conference</span>' +
+            '<span style="margin:0 10px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#8e44ad;margin-right:5px;"></span>Book/Chapter</span>' +
+            '<span style="margin:0 10px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#27ae60;margin-right:5px;"></span>Software/Misc</span>' +
+            '</div>';
+        container.insertAdjacentHTML('beforeend', legendHtml);
+
+
         data.forEach(function(item, idx) {
             var side = (idx % 2 === 0) ? 'timeline-block-right' : 'timeline-block-left';
             var niceType = TYPE_MAP[item.type] || 'Publication';
             var venue = item.journal || item.booktitle || item.publisher || '';
             var authors = (item.author || '').replace(/ and /gi, ', ');
             
+            // Scelta del colore
+            var markerColor = COLOR_MAP[item.type] || DEFAULT_COLOR;
+
             var linkHtml = '';
             if (item.doi) {
                 var cleanDoi = item.doi.replace('https://doi.org/','');
@@ -68,10 +98,13 @@
 
             var html = 
             '<div class="timeline-block '+side+'">' +
-                '<div class="timeline-marker"></div>' +
+                // QUI INIETTO IL COLORE NELLO STYLE
+                '<div class="timeline-marker" style="background: '+markerColor+';"></div>' +
                 '<div class="timeline-content">' +
                     '<h3>' + (item.title || 'Untitled') + '</h3>' +
-                    '<span>' + (item.year || '') + ' | ' + niceType + (venue ? ': '+venue : '') + '</span>' +
+                    // Aggiungo anche un piccolo bordo colorato o testo colorato al tipo per richiamare il pallino (opzionale)
+                    '<span style="color:'+markerColor+'">' + (item.year || '') + ' | ' + niceType + '</span>' +
+                    '<span style="color:#777; font-weight:normal;">' + (venue ? venue : '') + '</span>' +
                     '<p>Authors: ' + authors + linkHtml + '</p>' +
                 '</div>' +
             '</div>';
