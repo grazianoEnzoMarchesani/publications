@@ -1,7 +1,7 @@
-// File: timeline.js - v8.0 ANIMATED
+// File: timeline.js - v9.0 DEEP ANIMATION
 (function() {
     window.filterPublications = function(filterType, btnElement) {
-        // 1. Gestione Bottoni (UI)
+        // UI Bottoni
         var buttons = document.querySelectorAll('.filter-btn');
         var isAll = (filterType === 'all');
         buttons.forEach(function(btn) { 
@@ -20,7 +20,7 @@
             }
         });
 
-        // 2. Gestione Animazione Blocchi
+        // Logica Animazione
         var blocks = document.querySelectorAll('.timeline-block');
         
         blocks.forEach(function(block) {
@@ -28,34 +28,38 @@
             var shouldShow = (filterType === 'all' || itemType === filterType);
 
             if (shouldShow) {
-                // FASE 1: MOSTRARE
-                // Se era nascosto (display:none), rimettilo nel flusso
+                // FASE ENTRATA
                 if (block.style.display === 'none') {
                     block.style.display = 'block';
-                }
-                // Piccolo timeout per permettere al browser di registrare il 'display:block'
-                // prima di rimuovere la classe di opacità, altrimenti non anima
-                setTimeout(function() {
+                    // Assicuriamoci che abbia la classe hidden prima di iniziare
+                    block.classList.add('anim-hidden');
+                    
+                    // FORZATURA REFLOW: Chiediamo un frame di attesa
+                    requestAnimationFrame(function() {
+                        requestAnimationFrame(function() {
+                            block.classList.remove('anim-hidden');
+                        });
+                    });
+                } else {
+                    // Se era già visibile (es. clicco All dopo un filtro), rimuovo solo la classe
                     block.classList.remove('anim-hidden');
-                }, 10);
-
+                }
             } else {
-                // FASE 2: NASCONDERE
-                // Prima aggiungi la classe per l'animazione (fade out + slide down)
+                // FASE USCITA
                 block.classList.add('anim-hidden');
                 
-                // Aspetta che l'animazione CSS (0.5s) finisca, poi togli dallo spazio fisico
+                // Aspetta la fine della transizione (600ms come nel CSS)
                 setTimeout(function() {
-                    // Controllo di sicurezza: nascondi solo se ha ancora la classe hidden
-                    // (l'utente potrebbe aver cliccato velocemente un altro filtro nel frattempo)
+                    // Controllo di sicurezza
                     if (block.classList.contains('anim-hidden')) {
                         block.style.display = 'none';
                     }
-                }, 500); // 500ms deve corrispondere al transition nel CSS
+                }, 600); 
             }
         });
     };
 
+    // SETUP INIZIALE
     var BIB_URL = 'https://raw.githubusercontent.com/grazianoEnzoMarchesani/publications/refs/heads/main/references.bib';
     var CONTAINER_ID = 'timeline-root';
     var TYPE_MAP = { 'article': 'Journal', 'inbook': 'Book Chapter', 'conference': 'Conference', 'phdthesis': 'PhD Thesis', 'misc': 'Software / Misc', 'techreport': 'Report', 'book': 'Book' };
