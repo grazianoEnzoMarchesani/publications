@@ -1,19 +1,35 @@
-// File: timeline.js - v3.0 FIX LAYOUT & FILTERS
+// File: timeline.js - v5.0 MINIMAL DESIGN
 (function() {
-    // 1. Rendiamo la funzione di filtro GLOBALE accessibile all'HTML
+    // Funzione filtro globale
     window.filterPublications = function(filterType, btnElement) {
-        // Gestione classe active sui bottoni
+        // 1. Gestione visuale dei bottoni (stile "legenda attiva")
         var buttons = document.querySelectorAll('.filter-btn');
-        buttons.forEach(function(btn) { btn.classList.remove('active'); });
-        if(btnElement) btnElement.classList.add('active');
+        var isAll = (filterType === 'all');
+        
+        buttons.forEach(function(btn) { 
+            // Se è "All", resetta tutto. Se è un filtro, sfoca gli altri.
+            if (isAll) {
+                btn.style.opacity = '1';
+                btn.classList.remove('active'); // Rimuove grassetto
+                if(btn.dataset.type === 'all') btn.classList.add('active');
+            } else {
+                // Se il bottone cliccato è questo
+                if (btn === btnElement) {
+                    btn.style.opacity = '1';
+                    btn.classList.add('active');
+                } else {
+                    btn.style.opacity = '0.4'; // Gli altri sbiadiscono
+                    btn.classList.remove('active');
+                }
+            }
+        });
 
-        // Mostra/Nascondi blocchi
+        // 2. Logica mostras/nascondi blocchi
         var blocks = document.querySelectorAll('.timeline-block');
         blocks.forEach(function(block) {
             var itemType = block.getAttribute('data-type');
             if (filterType === 'all' || itemType === filterType) {
                 block.style.display = 'block';
-                // Piccola animazione
                 setTimeout(function(){ block.style.opacity = '1'; }, 50);
             } else {
                 block.style.display = 'none';
@@ -22,7 +38,6 @@
         });
     };
 
-    // CONFIGURAZIONE
     var BIB_URL = 'https://raw.githubusercontent.com/grazianoEnzoMarchesani/publications/refs/heads/main/references.bib';
     var CONTAINER_ID = 'timeline-root';
     
@@ -31,14 +46,14 @@
         'phdthesis': 'PhD Thesis', 'misc': 'Software / Misc', 'techreport': 'Report', 'book': 'Book'
     };
 
-    // COLORI COORDINATI AL SITO E AL GRAFO
+    // I tuoi colori
     var COLOR_MAP = {
-        'article':     '#4e76a6', // Blu Avio (Journal)
-        'conference':  '#E67E22', // Arancio Vivo (Conference)
-        'inbook':      '#8E44AD', // Viola (Book)
+        'article':     '#4e76a6', 
+        'conference':  '#E67E22', 
+        'inbook':      '#8E44AD', 
         'book':        '#8E44AD',
-        'phdthesis':   '#C0392B', // Rosso Scuro
-        'misc':        '#27AE60', // Verde (Software/Misc)
+        'phdthesis':   '#C0392B', 
+        'misc':        '#27AE60', 
         'techreport':  '#7F8C8D'
     };
     var DEFAULT_COLOR = '#4e76a6';
@@ -81,9 +96,10 @@
         if(!root) return;
         root.innerHTML = ''; 
 
-        // 1. AREA FILTRI (Bottoni reali, non solo pallini)
+        // --- FILTRI MINIMAL (Simile a Legenda) ---
         var filterHtml = '<div class="timeline-filters">';
-        filterHtml += '<button class="filter-btn active" onclick="window.filterPublications(\'all\', this)">All</button>';
+        // Tasto All
+        filterHtml += '<button class="filter-btn active" data-type="all" onclick="window.filterPublications(\'all\', this)">All</button>';
         
         var usedTypes = [];
         data.forEach(function(item){ if(usedTypes.indexOf(item.type) === -1) usedTypes.push(item.type); });
@@ -93,15 +109,14 @@
         usedTypes.forEach(function(type) {
             var color = COLOR_MAP[type] || DEFAULT_COLOR;
             var label = TYPE_MAP[type] || type;
-            // Creo un bottone con bordo colorato e pallino interno
-            filterHtml += '<button class="filter-btn" style="border-color:'+color+'; color:#555;" ' + 
-                          'onclick="window.filterPublications(\''+type+'\', this)">' +
-                          '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:'+color+';margin-right:6px;"></span>' + 
+            // Bottone pulito: solo pallino e testo
+            filterHtml += '<button class="filter-btn" data-type="'+type+'" onclick="window.filterPublications(\''+type+'\', this)">' +
+                          '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+color+';margin-right:8px;"></span>' + 
                           label + '</button>';
         });
         filterHtml += '</div>';
 
-        // 2. TIMELINE TRACK (Il contenitore della linea verticale)
+        // --- TIMELINE TRACK ---
         var entriesHtml = '<div class="timeline-track">';
         
         if(data.length === 0) {
@@ -124,8 +139,8 @@
 
                 entriesHtml += 
                 '<div class="timeline-block '+side+'" data-type="'+item.type+'">' +
-                    // Marker con doppio bordo per eleganza
-                    '<div class="timeline-marker" style="background: '+markerColor+'; box-shadow: 0 0 0 4px #fff, 0 0 0 6px '+markerColor+';"></div>' +
+                    // Marker Semplice (Style inline pulito)
+                    '<div class="timeline-marker" style="background: '+markerColor+';"></div>' +
                     '<div class="timeline-content">' +
                         '<h3>' + (item.title || 'Untitled') + '</h3>' +
                         '<span style="color:'+markerColor+'">' + (item.year || '') + ' | ' + niceType + '</span>' +
@@ -135,9 +150,8 @@
                 '</div>';
             });
         }
-        // IMPORTANTE: Clearfix per evitare che il footer risalga
         entriesHtml += '<div style="clear:both;"></div>';
-        entriesHtml += '</div>'; // Chiude timeline-track
+        entriesHtml += '</div>';
 
         root.innerHTML = filterHtml + entriesHtml;
     }
