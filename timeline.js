@@ -1,30 +1,26 @@
-// File: timeline.js - v5.0 MINIMAL DESIGN
+// File: timeline.js - v6.0 FLAT DESIGN
 (function() {
-    // Funzione filtro globale
+    // 1. Funzione filtro globale
     window.filterPublications = function(filterType, btnElement) {
-        // 1. Gestione visuale dei bottoni (stile "legenda attiva")
         var buttons = document.querySelectorAll('.filter-btn');
         var isAll = (filterType === 'all');
         
         buttons.forEach(function(btn) { 
-            // Se è "All", resetta tutto. Se è un filtro, sfoca gli altri.
             if (isAll) {
                 btn.style.opacity = '1';
-                btn.classList.remove('active'); // Rimuove grassetto
+                btn.classList.remove('active');
                 if(btn.dataset.type === 'all') btn.classList.add('active');
             } else {
-                // Se il bottone cliccato è questo
                 if (btn === btnElement) {
                     btn.style.opacity = '1';
                     btn.classList.add('active');
                 } else {
-                    btn.style.opacity = '0.4'; // Gli altri sbiadiscono
+                    btn.style.opacity = '0.4';
                     btn.classList.remove('active');
                 }
             }
         });
 
-        // 2. Logica mostras/nascondi blocchi
         var blocks = document.querySelectorAll('.timeline-block');
         blocks.forEach(function(block) {
             var itemType = block.getAttribute('data-type');
@@ -46,7 +42,7 @@
         'phdthesis': 'PhD Thesis', 'misc': 'Software / Misc', 'techreport': 'Report', 'book': 'Book'
     };
 
-    // I tuoi colori
+    // Colori
     var COLOR_MAP = {
         'article':     '#4e76a6', 
         'conference':  '#E67E22', 
@@ -96,9 +92,8 @@
         if(!root) return;
         root.innerHTML = ''; 
 
-        // --- FILTRI MINIMAL (Simile a Legenda) ---
+        // --- FILTRI ---
         var filterHtml = '<div class="timeline-filters">';
-        // Tasto All
         filterHtml += '<button class="filter-btn active" data-type="all" onclick="window.filterPublications(\'all\', this)">All</button>';
         
         var usedTypes = [];
@@ -109,7 +104,6 @@
         usedTypes.forEach(function(type) {
             var color = COLOR_MAP[type] || DEFAULT_COLOR;
             var label = TYPE_MAP[type] || type;
-            // Bottone pulito: solo pallino e testo
             filterHtml += '<button class="filter-btn" data-type="'+type+'" onclick="window.filterPublications(\''+type+'\', this)">' +
                           '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+color+';margin-right:8px;"></span>' + 
                           label + '</button>';
@@ -139,7 +133,7 @@
 
                 entriesHtml += 
                 '<div class="timeline-block '+side+'" data-type="'+item.type+'">' +
-                    // Marker Semplice (Style inline pulito)
+                    // MARKER PIATTO: Nessun box-shadow, nessun bordo inline. Solo Background.
                     '<div class="timeline-marker" style="background: '+markerColor+';"></div>' +
                     '<div class="timeline-content">' +
                         '<h3>' + (item.title || 'Untitled') + '</h3>' +
